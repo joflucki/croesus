@@ -1,0 +1,23 @@
+[project]
+name = "croesus"
+version = "0.1.0"
+dependencies = [
+    "cffi==1.17.1",
+    "imageio[ffmpeg]==2.37.0",
+    "numpy==2.3.1",
+    "pillow==11.3.0",
+    "pycparser==2.22",
+    "pygame==2.6.1",
+    "pymunk==7.1.0",
+]
+requires-python = ">=3.9"
+authors = [{ name = "Jonas Flückiger" }]
+maintainers = [{ name = "Jonas Flückiger" }]
+description = "A fully integrated tool used to generate and share satisfying physics simulation on social media"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICEN[CS]E.*"]
+keywords = ["physics", "simulation", "content generation", "money printing machine"]
+
+[project.urls]
+Repository = "https://github.com/joflucki/croesus"
