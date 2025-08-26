@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, Dict, List
 from numpy import ndarray
 import pygame
 import pymunk
@@ -6,62 +6,95 @@ import imageio
 
 # Settings
 WIDTH, HEIGHT = 1088, 1920
-FPS = 60
-DURATION_SECONDS = 10  # video length
-VIDEO_NAME = "bouncing_ball.mp4"
+FPS = 144
+DURATION_SECONDS = 10
+VIDEO_NAME = "output.mp4"
 
-# Setup pygame
-pygame.init()
-screen = pygame.Surface((WIDTH, HEIGHT))  # offscreen surface (no window)
-clock = pygame.time.Clock()
 
-# Setup pymunk space
-space = pymunk.Space()
-space.gravity = (0, 981)  # gravity downward
+def main():
+    # Setup pygame
+    pygame.init()
+    screen = pygame.Surface((WIDTH, HEIGHT))  # offscreen surface (no window)
+    clock = pygame.time.Clock()
 
-# Create floor
-floor = pymunk.Segment(space.static_body, (0, HEIGHT - 50), (WIDTH, HEIGHT - 50), 5)
-floor.elasticity = 1
-space.add(floor)
+    # Setup pymunk space
+    space = pymunk.Space()
+    space.gravity = (0, 981)  # gravity downward
 
-# Create ball
-radius = 25
-mass = 1
-moment = pymunk.moment_for_circle(mass, 0, radius)
-ball_body = pymunk.Body(mass, moment)
-ball_body.position = (WIDTH // 2, 100)
-ball_shape = pymunk.Circle(ball_body, radius)
-ball_shape.elasticity = 1
-space.add(ball_body, ball_shape)
+    # Create floor multiple floors
+    floors: List[pymunk.Segment] = []
 
-# Prepare video frame storage
-frames: List[ndarray] = []
+    for i in range(3):
+        floor = pymunk.Segment(
+            space.static_body,
+            (0, HEIGHT - (i + 1) * 50),
+            (WIDTH, HEIGHT - (i + 1) * 50),
+            5,
+        )
+        floor.elasticity = 1
+        space.add(floor)
+        floors.append(floor)
 
-# Simulation loop
-total_frames = FPS * DURATION_SECONDS
-for frame in range(total_frames):
-    # Step simulation
-    space.step(1 / FPS)
+    # Create ball
+    radius = 25
+    mass = 1
+    moment = pymunk.moment_for_circle(mass, 0, radius)
+    ball_body = pymunk.Body(mass, moment)
+    ball_body.position = (WIDTH // 2, 100)
+    ball_shape = pymunk.Circle(ball_body, radius)
+    ball_shape.elasticity = 0.8
+    space.add(ball_body, ball_shape)
 
-    # Clear screen
-    screen.fill((255, 255, 255))
+    # Create collision handler
+    def on_shape_collide(
+        arbiter: pymunk.Arbiter, space: pymunk.Space, data: Dict[str, Any]
+    ):
+        shape_a, shape_b = arbiter.shapes
+        if isinstance(shape_a, pymunk.Segment) and shape_a in floors:
+            floors.remove(shape_a)
+            space.remove(shape_a)
 
-    # Draw floor
-    pygame.draw.line(screen, (0, 0, 0), floor.a, floor.b, 5)
+        if isinstance(shape_b, pymunk.Segment) and shape_b in floors:
+            floors.remove(shape_b)
+            space.remove(shape_b)
 
-    # Draw ball
-    pos = int(ball_body.position[0]), int(ball_body.position[1])
-    pygame.draw.circle(screen, (255, 0, 0), pos, radius)
+    space.on_collision(
+        separate=on_shape_collide,
+    )
 
-    # Convert pygame surface to numpy array
-    frame_image = pygame.surfarray.array3d(screen)
-    frame_image = frame_image.swapaxes(0, 1)  # Pygame has different axis order
+    # Prepare video frame storage
+    frames: List[ndarray] = []
 
-    frames.append(frame_image)
+    # Simulation loop
+    total_frames = FPS * DURATION_SECONDS
+    for _ in range(total_frames):
+        # Step simulation
+        space.step(1 / FPS)
 
-    clock.tick(FPS)
+        # Clear screen
+        screen.fill((0, 0, 0))
 
-# Save to video using imageio
-print("Exporting video...")
-imageio.mimsave(uri=VIDEO_NAME, ims=frames, fps=FPS) # type: ignore
-print(f"Video saved as {VIDEO_NAME}")
+        # Draw floor
+        for floor in floors:
+            pygame.draw.line(screen, (255, 255, 255), floor.a, floor.b, 5)
+
+        # Draw ball
+        pos = int(ball_body.position[0]), int(ball_body.position[1])
+        pygame.draw.circle(screen, (255, 0, 0), pos, radius)
+
+        # Convert pygame surface to numpy array
+        frame_image = pygame.surfarray.array3d(screen)
+        frame_image = frame_image.swapaxes(0, 1)  # Pygame has different axis order
+
+        frames.append(frame_image)
+
+        clock.tick(FPS)
+
+    # Save to video using imageio
+    print("Exporting video...")
+    imageio.mimsave(uri=VIDEO_NAME, ims=frames, fps=FPS)  # type: ignore
+    print(f"Video saved as {VIDEO_NAME}")
+
+
+if __name__ == "__main__":
+    main()
