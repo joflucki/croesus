@@ -1,8 +1,8 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 from numpy import ndarray
 import pygame
 import pymunk
-import imageio
+from moviepy import ImageSequenceClip, AudioFileClip, CompositeVideoClip, CompositeAudioClip, AudioClip  # type: ignore
 
 # Settings
 WIDTH, HEIGHT = 1088, 1920
@@ -13,6 +13,7 @@ VIDEO_NAME = "output.mp4"
 
 def main():
     # Setup pygame
+    sound_effects: List[Tuple[int, str]] = []
     pygame.init()
     screen = pygame.Surface((WIDTH, HEIGHT))  # offscreen surface (no window)
     clock = pygame.time.Clock()
@@ -58,6 +59,8 @@ def main():
             floors.remove(shape_b)
             space.remove(shape_b)
 
+        sound_effects.append((frame_index, "pan.mp3"))
+
     space.on_collision(
         separate=on_shape_collide,
     )
@@ -67,7 +70,7 @@ def main():
 
     # Simulation loop
     total_frames = FPS * DURATION_SECONDS
-    for _ in range(total_frames):
+    for frame_index in range(total_frames):
         # Step simulation
         space.step(1 / FPS)
 
@@ -90,10 +93,14 @@ def main():
 
         clock.tick(FPS)
 
-    # Save to video using imageio
-    print("Exporting video...")
-    imageio.mimsave(uri=VIDEO_NAME, ims=frames, fps=FPS)  # type: ignore
-    print(f"Video saved as {VIDEO_NAME}")
+    video = ImageSequenceClip(sequence=frames, fps=FPS)
+    audio_clips: List[AudioClip] = []
+    for frame_index, file_name in sound_effects:
+        audio_clips.append(AudioFileClip(file_name).with_start((frame_index / FPS) - 0.27))
+    audio = CompositeAudioClip(audio_clips)
+    video = video.with_audio(audio)
+
+    video.write_videofile(VIDEO_NAME)
 
 
 if __name__ == "__main__":
